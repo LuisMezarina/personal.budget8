@@ -129,3 +129,64 @@ document.getElementById('movimientoForm').addEventListener('submit', function(e)
         mostrarConfirmacion(error.message, 'danger');
     }
 });
+
+// Filtrado por fecha
+function filtrarPorFecha(desde, hasta) {
+    return movimientos.filter(mov => {
+        const fecha = new Date(mov.fecha);
+        return fecha >= desde && fecha <= hasta;
+    });
+}
+
+function renderizarMovimientos(lista) {
+    const contenedor = document.getElementById('listaMovimientos');
+    contenedor.innerHTML = '';
+    lista.forEach(mov => contenedor.appendChild(mov.render()));
+}
+
+document.getElementById('btnFiltrar').addEventListener('click', () => {
+    const desdeStr = document.getElementById('fechaInicio').value;
+    const hastaStr = document.getElementById('fechaFin').value;
+
+    if (!desdeStr || !hastaStr) return mostrarConfirmacion("Selecciona ambas fechas", "danger");
+
+    const desde = new Date(desdeStr);
+    const hasta = new Date(hastaStr);
+    hasta.setHours(23,59,59,999); // Incluir todo el día
+
+    const resultado = filtrarPorFecha(desde, hasta);
+    renderizarMovimientos(resultado);
+});
+
+// Exportar a PDF
+function exportarAPDF() {
+    const { jsPDF } = window.jspdf; // 👈 Esta línea es necesaria
+    const doc = new jsPDF();
+
+    doc.setFontSize(14);
+    doc.text("Resumen de Presupuesto", 20, 20);
+
+    const resumen = [
+        `Total Ingresos: $${document.getElementById('totalIngresos').textContent}`,
+        `Total Egresos: $${document.getElementById('totalEgresos').textContent}`,
+        `Balance Total: $${document.getElementById('balanceTotal').textContent}`,
+    ];
+
+    resumen.forEach((linea, i) => doc.text(linea, 20, 40 + i * 10));
+
+    doc.text("Movimientos:", 20, 80);
+    let y = 90;
+    movimientos.forEach(mov => {
+        doc.text(`${mov.fecha.toLocaleDateString()} - ${mov.tipo.toUpperCase()}: $${mov.monto.toFixed(2)} - ${mov.descripcion}`, 20, y);
+        y += 10;
+        if (y > 270) {
+            doc.addPage();
+            y = 20;
+        }
+    });
+
+    doc.save("presupuesto.pdf");
+}
+
+
+document.getElementById('btnExportarPDF').addEventListener('click', exportarAPDF);
